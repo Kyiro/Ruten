@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
-use std::{fs::create_dir_all, time::Duration, thread::sleep};
+use crate::options::{AuthType, AUTH_TYPE};
 use crate::util::input;
+use std::{fs::create_dir_all, thread::sleep, time::Duration};
 mod backend;
-mod launcher;
 pub mod epic;
+mod launcher;
 pub mod options;
 pub mod util;
 
@@ -19,24 +20,47 @@ fn main() {
     for i in options::WELCOME.decrypt_str().unwrap().split("\n") {
         log::info!("{}", i.replace("{VER}", env!("CARGO_PKG_VERSION")));
     }
-    
+
     create_dir_all(util::user_path()).unwrap();
 
-    let thread = std::thread::spawn(|| backend::run().unwrap());
+    let thread = std::thread::spawn(||
+        if options::BACKEND == true {
+            backend::run().unwrap();
+        }
+    );
 
     if options::LAUNCHER == true {
         let config = util::config().unwrap();
         log::info!("Fortnite Directory: {}", config.path);
-        
+
         // lazy ass fix to the backend logs overlaping
         sleep(Duration::from_secs(1));
-        let exchange = input("Exchange Code: ");
-        launcher::launch(
-            None,
-            Some(&exchange),
-            launcher::AuthType::Exchange,
-            config.path
-        );
+        if AUTH_TYPE == AuthType::Exchange {
+            let exchange = input("Exchange Code: ");
+            launcher::launch(
+                None,
+                Some(&exchange),
+                AuthType::Exchange,
+                config.path,
+            );
+        } else if AUTH_TYPE == AuthType::Username {
+            let username = input("Username: ");
+            launcher::launch(
+                Some(&username),
+                None,
+                AuthType::Username,
+                config.path,
+            );
+        } else if AUTH_TYPE == AuthType::Password {
+            let username = input("Username: ");
+            let password = input("Password: ");
+            launcher::launch(
+                Some(&username),
+                Some(&password),
+                AuthType::Password,
+                config.path,
+            );
+        }
     } else if options::BACKEND == true {
         thread.join().unwrap();
     } else {

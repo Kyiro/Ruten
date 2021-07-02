@@ -6,8 +6,22 @@ pub enum UserDir {
     Root,
 }
 
+#[allow(dead_code)]
+#[derive(PartialEq)]
+pub enum AuthType {
+    Exchange,
+    // Just the username
+    Username,
+    // Both Username & Password
+    Password
+}
+
 // if you've used c++ and header files
 // this is pretty much my equivalent
+
+// Enable/Disable certain features
+pub const LAUNCHER: bool = true;
+pub const BACKEND: bool = true;
 
 // Used for random string generation
 pub const ALPHABET: [char; 36] = [
@@ -19,6 +33,9 @@ pub const ALPHABET: [char; 36] = [
 // Use FortniteLauncher.exe to get the fltoken
 pub const ABUSE_LAUNCHER: bool = true;
 
+// What Auth system to use
+pub const AUTH_TYPE: AuthType = AuthType::Exchange;
+
 // CURRENTLY UNUSED AND DOESN'T WORK
 // Whether to make a Ruten directory for binaries or just use the standard Win64 directory
 pub const RUTEN_DIR_LAUNCHER: bool = true;
@@ -26,15 +43,11 @@ pub const RUTEN_DIR_LAUNCHER: bool = true;
 // AC executables to replace
 pub const AC_EXECUTABLES: [&'static str; 2] = [
     "FortniteClient-Win64-Shipping_BE.exe",
-    "FortniteClient-Win64-Shipping_EAC.exe"
+    "FortniteClient-Win64-Shipping_EAC.exe",
 ];
 
 // Dummy AC executable
 pub static DUMMY_AC: EncryptedFile = include_crypt!("assets/DummyAC.exe");
-
-// Enable/Disable certain features
-pub const LAUNCHER: bool = false;
-pub const BACKEND: bool = true;
 
 // Where should profiles/cloudstorage/settings be stored
 pub const USER_DIR: UserDir = UserDir::Root;

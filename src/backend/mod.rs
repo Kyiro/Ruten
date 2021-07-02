@@ -1,4 +1,4 @@
-use actix_web::{App, get, HttpResponse, HttpServer, Responder, web};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 
 use crate::backend::cosmetics::CItem;
 use crate::options::{COSMETICS, HOST_URL};
@@ -14,26 +14,19 @@ async fn index() -> impl Responder {
 }
 
 #[get("/cosmetics")]
-async fn items(
-    items: web::Data<Vec<CItem>>
-) -> impl Responder {
-    HttpResponse::Ok()
-        .json(&**items)
+async fn items(items: web::Data<Vec<CItem>>) -> impl Responder {
+    HttpResponse::Ok().json(&**items)
 }
-
 
 #[actix_web::main]
 pub async fn run() -> std::io::Result<()> {
-    let cosmetics = web::Data::new(
-        if COSMETICS == true {
-            cosmetics::get()
-            .unwrap()
-        } else {
-            Vec::new()
-        }
-    );
-    
-    HttpServer::new(move ||
+    let cosmetics = web::Data::new(if COSMETICS == true {
+        cosmetics::get().unwrap()
+    } else {
+        Vec::new()
+    });
+
+    HttpServer::new(move || {
         App::new()
             .app_data(cosmetics.clone())
             .service(index)
@@ -41,8 +34,13 @@ pub async fn run() -> std::io::Result<()> {
             .service(api::cloudstorage::system)
             .service(api::cloudstorage::system_config)
             .service(api::cloudstorage::system_file)
-        )
-        .bind(HOST_URL)?
-        .run()
-        .await
+            .service(api::mcp::client_quest_login)
+            .service(api::mcp::set_cosmetic_locker_slot)
+            .service(api::mcp::set_item_favorite_status_batch)
+            .service(api::mcp::query_profile)
+            .service(api::mcp::other)
+    })
+    .bind(HOST_URL)?
+    .run()
+    .await
 }

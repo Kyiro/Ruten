@@ -6,32 +6,34 @@ use std::path::Path;
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
-    pub path: String
+    pub path: String,
 }
 
 pub fn config() -> std::io::Result<Config> {
     let user = user_path();
-    
+
     let path = &[&user, "config.json"].join("\\");
-    
+
     if !Path::new(path).is_file() {
-        write(path, serde_json::to_string(&Config {
-            path: match fn_path() {
-                Ok(data) => data,
-                Err(err) => {
-                    log::error!(
-                        "{}, please input your path manually...",
-                        err.into_inner().unwrap()
-                    );
-                    input("Fortnite Path: ")
-                }
-            }
-        }).unwrap())?;
+        write(
+            path,
+            serde_json::to_string(&Config {
+                path: match fn_path() {
+                    Ok(data) => data,
+                    Err(err) => {
+                        log::error!(
+                            "{}, please input your path manually...",
+                            err.into_inner().unwrap()
+                        );
+                        input("Fortnite Path: ")
+                    }
+                },
+            })
+            .unwrap(),
+        )?;
     }
-    
-    Ok(serde_json::from_str::<Config>(
-        &read_to_string(path)?
-    ).unwrap())
+
+    Ok(serde_json::from_str::<Config>(&read_to_string(path)?).unwrap())
 }
 
 pub fn user_path() -> String {
@@ -43,8 +45,8 @@ pub fn user_path() -> String {
                 let path = [&data, "Ruten"].join("\\");
                 create_dir_all(&path).unwrap();
                 path
-            },
-            Err(_) => String::from(".\\user")
+            }
+            Err(_) => String::from(".\\user"),
         }
     }
 }

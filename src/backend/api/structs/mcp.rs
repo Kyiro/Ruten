@@ -2,9 +2,21 @@ use std::collections::HashMap;
 
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
+use std::sync::Arc;
 
 use crate::options::ALPHABET;
+use crate::backend::cosmetics::CItem;
+
+#[macro_export]
+macro_rules! items {
+    ($slot:expr) => {
+        SlotData {
+            items: $slot.items,
+            activeVariants: $slot.variants
+        }
+    };
+}
 
 /*
     when adding a new value
@@ -22,10 +34,10 @@ use crate::options::ALPHABET;
 pub struct RProfile {
     pub id: String,
     pub created: String,
+    pub updated: String,
     pub favourites: Vec<String>,
     pub last_loadout: String,
-    pub loadouts: HashMap<String, RLoadout>,
-    pub rvn: i32
+    pub loadouts: HashMap<String, RLoadout>
 }
 
 #[derive(Serialize, Deserialize)]
@@ -39,16 +51,16 @@ pub struct RLoadout {
     pub wraps: RSlot,
     pub music: RSlot,
     pub loading: RSlot,
-    
+
     pub name: String,
     pub banner_icon: String,
-    pub banner_colour: String
+    pub banner_colour: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct RSlot {
     pub items: Vec<String>,
-    pub variants: Vec<Option<SlotVariants>>
+    pub variants: Vec<Option<SlotVariants>>,
 }
 
 impl RProfile {
@@ -59,14 +71,14 @@ impl RProfile {
             map.insert(random_loadout.clone(), RLoadout::new("Ruten"));
             map
         };
-        
+
         Self {
             id: id.to_string(),
             created: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
+            updated: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
             favourites: Vec::new(),
             last_loadout: random_loadout,
-            loadouts,
-            rvn: 1
+            loadouts
         }
     }
 }
@@ -83,10 +95,10 @@ impl RLoadout {
             wraps: RSlot::new(7),
             music: RSlot::new(1),
             loading: RSlot::new(1),
-            
+
             name: name.to_string(),
             banner_icon: String::from("OtherBanner51"),
-            banner_colour: String::from("DefaultColor17")
+            banner_colour: String::from("DefaultColor17"),
         }
     }
 }
@@ -95,9 +107,9 @@ impl RSlot {
     pub fn new(len: u32) -> Self {
         let mut slot = Self {
             items: Vec::new(),
-            variants: Vec::new()
+            variants: Vec::new(),
         };
-        for _ in 1..len {
+        for _ in 0..len {
             slot.items.push(String::new());
             slot.variants.push(None);
         }
@@ -107,8 +119,6 @@ impl RSlot {
 
 // Fortnite Profile
 
-// did camelCase to snake_case for no fucking reason lol
-// send help
 #[derive(Serialize, Deserialize)]
 pub struct Profile {
     pub profileRevision: i32,
@@ -117,19 +127,180 @@ pub struct Profile {
     pub profileChanges: Vec<ProfileChanges>,
     pub profileCommandRevision: i32,
     pub serverTime: String,
-    pub responseVersion: i32
+    pub responseVersion: i32,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ProfileChanges {
-    Full(FullProfile)
+    Full(FullProfile),
+    Changed(AttrChanged)
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Attributes {
+    LockerSlots(LockerSlots),
+    Bool(bool)
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AttrChanged {
+    pub changeType: String,
+    pub itemId: String,
+    pub attributeName: String,
+    pub attributeValue: Attributes
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct FullProfile {
     pub changeType: String,
-    pub profile: FullProfileUpdate
+    pub profile: FullProfileUpdate,
+}
+
+impl FullProfile {
+    pub fn new(
+        cosmetics: Arc<Vec<CItem>>,
+        profile: RProfile
+    ) -> Self {
+        let id = profile.id;
+        let mut full_profile = FullProfile {
+            changeType: String::from("fullProfileUpdate"),
+            profile: FullProfileUpdate {
+                _id: id.clone(),
+                created: profile.created,
+                updated: profile.updated,
+                rvn: 1,
+                wipeNumber: 1,
+                accountId: id,
+                profileId: String::from("athena"),
+                version: String::from("Ruten"),
+                items: HashMap::new(),
+                stats: Stats {
+                    attributes: StatsAttributes {
+                        use_random_loadout: false,
+                        past_seasons: Vec::new(),
+                        season_match_boost: 0,
+                        loadouts: {
+                            let keys = profile.loadouts.keys();
+                            let mut data = Vec::new();
+                            for i in keys {
+                                data.push(i.clone());
+                            }
+                            data
+                        },
+                        mfa_reward_claimed: true,
+                        rested_xp_overflow: 0,
+                        quest_manager: json!({
+                            "dailyLoginInterval": "2021-06-24T11:24:14.414Z",
+                            "dailyQuestRerolls": 1
+                        }),
+                        book_level: 100,
+                        season_num: 17,
+                        season_update: 0,
+                        book_xp: 999999,
+                        permissions: Vec::new(),
+                        season: json!({
+                            "numWins": 0,
+                            "numHighBracket": 0,
+                            "numLowBracket": 0
+                        }),
+                        battlestars: 9999,
+                        vote_data: json!({}),
+                        battlestars_season_total: 9999,
+                        alien_style_points: 9999,
+                        book_purchased: true,
+                        lifetime_wins: 999,
+                        party_assist_quest: String::new(),
+                        purchased_battle_pass_tier_offers: json!({}),
+                        rested_xp_exchange: 1,
+                        level: 100,
+                        xp_overflow: 0,
+                        rested_xp: 0,
+                        rested_xp_mult: 4.55,
+                        season_first_tracking_bits: Vec::new(),
+                        accountLevel: 9999,
+                        competitive_identity: json!({}),
+                        inventory_limit_bonus: 0,
+                        pinned_quest: String::new(),
+                        last_applied_loadout: profile.last_loadout,
+                        daily_rewards: json!({}),
+                        xp: 9999999,
+                        season_friend_match_boost: 0,
+                        purchased_bp_offers: Vec::new(),
+                        last_match_end_datetime: String::new(),
+                        active_loadout_index: 0
+                    }
+                },
+                commandRevision: 1
+            }
+        };
+        
+        for (id, loadout) in profile.loadouts {
+            full_profile.profile.items.insert(
+                id,
+                Item::Loadout(
+                    LoadoutItem {
+                        templateId: String::from("CosmeticLocker:cosmeticlocker_athena"),
+                        attributes: LoadoutAttributes {
+                            locker_slots_data: LockerSlots {
+                                slots: Slots {
+                                    SkyDiveContrail: items!(loadout.contrail),
+                                    MusicPack: items!(loadout.music),
+                                    Character: items!(loadout.outfit),
+                                    Backpack: items!(loadout.backpack),
+                                    Glider: items!(loadout.glider),
+                                    Pickaxe: items!(loadout.pickaxe),
+                                    ItemWrap: items!(loadout.wraps),
+                                    LoadingScreen: items!(loadout.loading),
+                                    Dance: items!(loadout.dances)
+                                }
+                            },
+                            use_count: 1,
+                            banner_icon_template: loadout.banner_icon,
+                            banner_color_template: loadout.banner_colour,
+                            locker_name: loadout.name,
+                            item_seen: false,
+                            favorite: false
+                        },
+                        quantity: 1
+                    }
+                )
+            );
+        }
+        
+        let now = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+        
+        for item in cosmetics.iter() {
+            let template_id = [
+                item.item_type.clone(),
+                item.id.clone()
+            ].join(":");
+            full_profile.profile.items.insert(
+                template_id.clone(),
+                Item::Cosmetic(
+                    CosmeticItem {
+                        templateId: template_id.clone(),
+                        attributes: CosmeticAttributes {
+                            creation_time: if item.new == true {
+                                now.clone()
+                            } else { String::from("min") },
+                            max_level_bonus: 0,
+                            level: 1,
+                            item_seen: true,
+                            rnd_sel_cnt: 0,
+                            xp: 0,
+                            variants: Vec::new(),
+                            favorite: profile.favourites.contains(&template_id)
+                        },
+                        quantity: 1
+                    }
+                )
+            );
+        }
+        
+        full_profile
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -144,12 +315,12 @@ pub struct FullProfileUpdate {
     pub version: String,
     pub items: HashMap<String, Item>,
     pub stats: Stats,
-    pub commandRevision: i32
+    pub commandRevision: i32,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Stats {
-    pub attributes: StatsAttributes
+    pub attributes: StatsAttributes,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -191,21 +362,21 @@ pub struct StatsAttributes {
     pub season_friend_match_boost: i32,
     pub purchased_bp_offers: Vec<Value>,
     pub last_match_end_datetime: String,
-    pub active_loadout_index: i32
+    pub active_loadout_index: i32,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Item {
     Cosmetic(CosmeticItem),
-    Loadout(LoadoutItem)
+    Loadout(LoadoutItem),
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CosmeticItem {
     pub templateId: String,
     pub attributes: CosmeticAttributes,
-    pub quantity: i32
+    pub quantity: i32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -217,21 +388,21 @@ pub struct CosmeticAttributes {
     pub rnd_sel_cnt: i32,
     pub xp: i32,
     pub variants: Vec<Variant>,
-    pub favorite: bool
+    pub favorite: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Variant {
     pub channel: String,
     pub active: String,
-    pub owned: Vec<String>
+    pub owned: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct LoadoutItem {
     pub templateId: String,
     pub attributes: LoadoutAttributes,
-    pub quantity: i32
+    pub quantity: i32,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -242,12 +413,12 @@ pub struct LoadoutAttributes {
     pub banner_color_template: String,
     pub locker_name: String,
     pub item_seen: bool,
-    pub favorite: bool
+    pub favorite: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct LockerSlots {
-    pub slots: Slots
+    pub slots: Slots,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -260,22 +431,22 @@ pub struct Slots {
     pub Pickaxe: SlotData,
     pub ItemWrap: SlotData,
     pub LoadingScreen: SlotData,
-    pub Dance: SlotData
+    pub Dance: SlotData,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct SlotData {
     pub items: Vec<String>,
-    pub activeVariants: Vec<Option<SlotVariants>>
+    pub activeVariants: Vec<Option<SlotVariants>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SlotVariants {
-    pub variants: Vec<SlotVariant>
+    pub variants: Vec<SlotVariant>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SlotVariant {
     pub channel: String,
-    pub active: String
+    pub active: String,
 }

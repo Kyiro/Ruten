@@ -1,33 +1,33 @@
-use actix_web::{get, HttpResponse, Responder, web};
+use crate::{
+    // loooooooooooooooooooong
+    backend::api::structs::cloudstorage::SystemEntry,
+    options::{CLOUDSTORAGE, CUSTOM_CLOUDSTORAGE},
+    util::user_path,
+};
+use actix_web::{get, web, HttpResponse, Responder};
 use chrono::prelude::*;
 use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use std::fs::{create_dir_all, read_dir, read_to_string};
 use std::path::Path;
-use crate::{
-    // loooooooooooooooooooong
-    backend::api::structs::cloudstorage::{SystemEntry},
-    options::{CUSTOM_CLOUDSTORAGE, CLOUDSTORAGE},
-    util::user_path
-};
 
 #[get("/fortnite/api/cloudstorage/system")]
 pub async fn system() -> impl Responder {
     let mut data = Vec::<SystemEntry>::new();
-    
+
     if CUSTOM_CLOUDSTORAGE == false {
         for (name, content) in CLOUDSTORAGE.iter() {
             let content = content.decrypt();
-            
+
             let mut sha1 = Sha1::new();
             let mut sha256 = Sha256::new();
             sha1.update(&content);
             sha256.update(&content);
             let sha1 = sha1.finalize();
             let sha256 = sha256.finalize();
-            
+
             let content = String::from_utf8(content).unwrap();
-        
+
             data.push(SystemEntry {
                 unique_filename: name.to_string(),
                 filename: name.to_string(),
@@ -40,15 +40,14 @@ pub async fn system() -> impl Responder {
                 do_not_cache: true,
             })
         }
-    }
-    else {
+    } else {
         let dir = [&user_path(), "cloudstorage"].join("\\");
-        
+
         if !Path::new(&dir).is_dir() {
             create_dir_all(dir).unwrap();
             return HttpResponse::Ok().json(data);
         }
-        
+
         for file in read_dir(dir).unwrap() {
             let file = file.unwrap();
             let file_name = file.file_name().into_string().unwrap();
@@ -86,9 +85,8 @@ pub async fn system() -> impl Responder {
             })
         }
     }
-    
-    HttpResponse::Ok()
-        .json(data)
+
+    HttpResponse::Ok().json(data)
 }
 
 #[get("/fortnite/api/cloudstorage/system/config")]
@@ -99,16 +97,15 @@ pub async fn system_config() -> impl Responder {
 #[get("/fortnite/api/cloudstorage/system/{file}")]
 pub async fn system_file(web::Path(file): web::Path<String>) -> impl Responder {
     let content = if CUSTOM_CLOUDSTORAGE == true {
-        read_to_string(
-            [&user_path(), "cloudstorage", &file].join("\\")
-        ).unwrap()
+        read_to_string([&user_path(), "cloudstorage", &file].join("\\")).unwrap()
     } else {
         CLOUDSTORAGE
-        .iter()
-        .find(|(name, _)| *name == file)
-        .unwrap()
-        .1
-        .decrypt_str().unwrap()
+            .iter()
+            .find(|(name, _)| *name == file)
+            .unwrap()
+            .1
+            .decrypt_str()
+            .unwrap()
     };
     HttpResponse::Ok()
         .set_header("content-type", "application/octet-stream")
