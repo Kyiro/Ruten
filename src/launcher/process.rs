@@ -7,7 +7,7 @@ pub fn find(system: &mut sysinfo::System, name: &str) -> usize {
         match system
             .get_processes()
             .iter()
-            .find(|(_, i)| i.name() == name)
+            .find(|(_, i)| i.exe().to_str().unwrap() == name)
         {
             Some((pid, _)) => break *pid,
             None => (),

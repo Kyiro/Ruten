@@ -77,7 +77,10 @@ pub fn launch(login: Option<&str>, password: Option<&str>, auth_type: AuthType, 
 
     let mut system = sysinfo::System::new_all();
 
-    let pid = process::find(&mut system, "FortniteClient-Win64-Shipping.exe");
+    let pid = process::find(&mut system, &[
+        &ruten_dir,
+        "FortniteClient-Win64-Shipping.exe"
+    ].join("\\"));
 
     log::info!("FortniteClient-Win64-Shipping.exe PID is {}", &pid);
 
