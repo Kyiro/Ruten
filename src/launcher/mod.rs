@@ -6,7 +6,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use sysinfo::SystemExt;
 
-use crate::options::{AC_EXECUTABLES, AuthType, DUMMY_AC, INJECTABLES};
+use crate::options::{AuthType, AC_EXECUTABLES, DUMMY_AC, INJECTABLES};
 
 mod process;
 
@@ -32,7 +32,7 @@ pub fn launch(login: Option<&str>, password: Option<&str>, auth_type: AuthType, 
 
     let auth_type = match auth_type {
         AuthType::Exchange => "exchangecode",
-        _ => "epic"
+        _ => "epic",
     };
 
     let binaries = [&path, "FortniteGame\\Binaries"].join("\\");

@@ -23,11 +23,11 @@ fn main() {
 
     create_dir_all(util::user_path()).unwrap();
 
-    let thread = std::thread::spawn(||
+    let thread = std::thread::spawn(|| {
         if options::BACKEND == true {
             backend::run().unwrap();
         }
-    );
+    });
 
     if options::LAUNCHER == true {
         let config = util::config().unwrap();
@@ -37,20 +37,10 @@ fn main() {
         sleep(Duration::from_secs(1));
         if AUTH_TYPE == AuthType::Exchange {
             let exchange = input("Exchange Code: ");
-            launcher::launch(
-                None,
-                Some(&exchange),
-                AuthType::Exchange,
-                config.path,
-            );
+            launcher::launch(None, Some(&exchange), AuthType::Exchange, config.path);
         } else if AUTH_TYPE == AuthType::Username {
             let username = input("Username: ");
-            launcher::launch(
-                Some(&username),
-                None,
-                AuthType::Username,
-                config.path,
-            );
+            launcher::launch(Some(&username), None, AuthType::Username, config.path);
         } else if AUTH_TYPE == AuthType::Password {
             let username = input("Username: ");
             let password = input("Password: ");

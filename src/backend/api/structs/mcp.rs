@@ -5,15 +5,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
-use crate::options::ALPHABET;
 use crate::backend::cosmetics::CItem;
+use crate::options::ALPHABET;
 
 #[macro_export]
 macro_rules! items {
     ($slot:expr) => {
         SlotData {
             items: $slot.items,
-            activeVariants: $slot.variants
+            activeVariants: $slot.variants,
         }
     };
 }
@@ -37,7 +37,7 @@ pub struct RProfile {
     pub updated: String,
     pub favourites: Vec<String>,
     pub last_loadout: String,
-    pub loadouts: HashMap<String, RLoadout>
+    pub loadouts: HashMap<String, RLoadout>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -78,7 +78,7 @@ impl RProfile {
             updated: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
             favourites: Vec::new(),
             last_loadout: random_loadout,
-            loadouts
+            loadouts,
         }
     }
 }
@@ -134,14 +134,14 @@ pub struct Profile {
 #[serde(untagged)]
 pub enum ProfileChanges {
     Full(FullProfile),
-    Changed(AttrChanged)
+    Changed(AttrChanged),
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Attributes {
     LockerSlots(LockerSlots),
-    Bool(bool)
+    Bool(bool),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -149,7 +149,7 @@ pub struct AttrChanged {
     pub changeType: String,
     pub itemId: String,
     pub attributeName: String,
-    pub attributeValue: Attributes
+    pub attributeValue: Attributes,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -159,10 +159,7 @@ pub struct FullProfile {
 }
 
 impl FullProfile {
-    pub fn new(
-        cosmetics: Arc<Vec<CItem>>,
-        profile: RProfile
-    ) -> Self {
+    pub fn new(cosmetics: Arc<Vec<CItem>>, profile: RProfile) -> Self {
         let id = profile.id;
         let mut full_profile = FullProfile {
             changeType: String::from("fullProfileUpdate"),
@@ -229,76 +226,71 @@ impl FullProfile {
                         season_friend_match_boost: 0,
                         purchased_bp_offers: Vec::new(),
                         last_match_end_datetime: String::new(),
-                        active_loadout_index: 0
-                    }
+                        active_loadout_index: 0,
+                    },
                 },
-                commandRevision: 1
-            }
+                commandRevision: 1,
+            },
         };
-        
+
         for (id, loadout) in profile.loadouts {
             full_profile.profile.items.insert(
                 id,
-                Item::Loadout(
-                    LoadoutItem {
-                        templateId: String::from("CosmeticLocker:cosmeticlocker_athena"),
-                        attributes: LoadoutAttributes {
-                            locker_slots_data: LockerSlots {
-                                slots: Slots {
-                                    SkyDiveContrail: items!(loadout.contrail),
-                                    MusicPack: items!(loadout.music),
-                                    Character: items!(loadout.outfit),
-                                    Backpack: items!(loadout.backpack),
-                                    Glider: items!(loadout.glider),
-                                    Pickaxe: items!(loadout.pickaxe),
-                                    ItemWrap: items!(loadout.wraps),
-                                    LoadingScreen: items!(loadout.loading),
-                                    Dance: items!(loadout.dances)
-                                }
+                Item::Loadout(LoadoutItem {
+                    templateId: String::from("CosmeticLocker:cosmeticlocker_athena"),
+                    attributes: LoadoutAttributes {
+                        locker_slots_data: LockerSlots {
+                            slots: Slots {
+                                SkyDiveContrail: items!(loadout.contrail),
+                                MusicPack: items!(loadout.music),
+                                Character: items!(loadout.outfit),
+                                Backpack: items!(loadout.backpack),
+                                Glider: items!(loadout.glider),
+                                Pickaxe: items!(loadout.pickaxe),
+                                ItemWrap: items!(loadout.wraps),
+                                LoadingScreen: items!(loadout.loading),
+                                Dance: items!(loadout.dances),
                             },
-                            use_count: 1,
-                            banner_icon_template: loadout.banner_icon,
-                            banner_color_template: loadout.banner_colour,
-                            locker_name: loadout.name,
-                            item_seen: false,
-                            favorite: false
                         },
-                        quantity: 1
-                    }
-                )
+                        use_count: 1,
+                        banner_icon_template: loadout.banner_icon,
+                        banner_color_template: loadout.banner_colour,
+                        locker_name: loadout.name,
+                        item_seen: false,
+                        favorite: false,
+                    },
+                    quantity: 1,
+                }),
             );
         }
-        
+
         let now = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
-        
+
         for item in cosmetics.iter() {
-            let template_id = [
-                item.item_type.clone(),
-                item.id.clone()
-            ].join(":");
+            let template_id = [item.item_type.clone(), item.id.clone()].join(":");
             full_profile.profile.items.insert(
                 template_id.clone(),
-                Item::Cosmetic(
-                    CosmeticItem {
-                        templateId: template_id.clone(),
-                        attributes: CosmeticAttributes {
-                            creation_time: if item.new == true {
-                                now.clone()
-                            } else { String::from("min") },
-                            max_level_bonus: 0,
-                            level: 1,
-                            item_seen: true,
-                            rnd_sel_cnt: 0,
-                            xp: 0,
-                            variants: Vec::new(),
-                            favorite: profile.favourites.contains(&template_id)
+                Item::Cosmetic(CosmeticItem {
+                    templateId: template_id.clone(),
+                    attributes: CosmeticAttributes {
+                        creation_time: if item.new == true {
+                            now.clone()
+                        } else {
+                            String::from("min")
                         },
-                        quantity: 1
-                    }
-                )
+                        max_level_bonus: 0,
+                        level: 1,
+                        item_seen: true,
+                        rnd_sel_cnt: 0,
+                        xp: 0,
+                        variants: Vec::new(),
+                        favorite: profile.favourites.contains(&template_id),
+                    },
+                    quantity: 1,
+                }),
             );
         }
-        
+
         full_profile
     }
 }

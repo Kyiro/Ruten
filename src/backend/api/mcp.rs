@@ -2,7 +2,7 @@ use crate::backend::api::structs::mcp::*;
 use crate::backend::cosmetics::CItem;
 use crate::items;
 use crate::util::user_path;
-use actix_web::{HttpResponse, post, Responder, web};
+use actix_web::{post, web, HttpResponse, Responder};
 use chrono::prelude::*;
 use serde::Deserialize;
 use serde_json::Value;
@@ -12,9 +12,9 @@ use std::path::Path;
 fn create(profile_id: String, change: Vec<ProfileChanges>, rvn: Option<i32>) -> Profile {
     let revision = match rvn {
         Some(i) => i + 1,
-        None => 1
+        None => 1,
     };
-    
+
     Profile {
         profileRevision: revision,
         profileId: profile_id,
@@ -22,7 +22,7 @@ fn create(profile_id: String, change: Vec<ProfileChanges>, rvn: Option<i32>) -> 
         profileChanges: change,
         profileCommandRevision: revision,
         serverTime: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
-        responseVersion: 1
+        responseVersion: 1,
     }
 }
 
@@ -54,41 +54,28 @@ fn update_profile(profile: RProfile) -> std::io::Result<()> {
 #[derive(Deserialize)]
 pub struct Query {
     pub profileId: String,
-    pub rvn: i32
+    pub rvn: i32,
 }
-
 
 #[post("/fortnite/api/game/v2/profile/{id}/client/QueryProfile")]
 pub async fn query_profile(
     cosmetics: web::Data<Vec<CItem>>,
-    web::Path(id): web::Path<String>
+    web::Path(id): web::Path<String>,
 ) -> std::io::Result<impl Responder> {
     let profile = get_profile(&id)?;
-    
+
     let full_profile = FullProfile::new(cosmetics.into_inner(), profile);
-    
-    Ok(
-        HttpResponse::Ok()
-        .json(
-            create(
-                String::from("athena"),
-                vec! [ProfileChanges::Full(full_profile)],
-                None
-            )
-        )
-    )
+
+    Ok(HttpResponse::Ok().json(create(
+        String::from("athena"),
+        vec![ProfileChanges::Full(full_profile)],
+        None,
+    )))
 }
 
 #[post("/fortnite/api/game/v2/profile/{id}/client/ClientQuestLogin")]
 pub async fn client_quest_login() -> impl Responder {
-    HttpResponse::Ok()
-    .json(
-        create(
-            String::from("athena"),
-            Vec::new(),
-            None
-        )
-    )
+    HttpResponse::Ok().json(create(String::from("athena"), Vec::new(), None))
 }
 
 #[derive(Deserialize)]
@@ -110,19 +97,19 @@ pub struct SetCosmeticLockerSlot {
     pub category: Category,
     pub itemToSlot: String,
     pub slotIndex: i32,
-    pub variantUpdates: Vec<Value>
+    pub variantUpdates: Vec<Value>,
 }
 
 #[post("/fortnite/api/game/v2/profile/{id}/client/SetCosmeticLockerSlot")]
 pub async fn set_cosmetic_locker_slot(
     web::Path(id): web::Path<String>,
     data: web::Json<SetCosmeticLockerSlot>,
-    query: web::Query<Query>
+    query: web::Query<Query>,
 ) -> std::io::Result<impl Responder> {
     let data = data.into_inner();
     let mut profile = get_profile(&id)?;
     let loadout = profile.loadouts.get_mut(&data.lockerItem).unwrap();
-    
+
     let to_slot = match data.category {
         Category::Character => &mut loadout.outfit,
         Category::Dance => &mut loadout.dances,
@@ -132,122 +119,106 @@ pub async fn set_cosmetic_locker_slot(
         Category::LoadingScreen => &mut loadout.loading,
         Category::SkyDiveContrail => &mut loadout.contrail,
         Category::MusicPack => &mut loadout.music,
-        Category::ItemWrap => &mut loadout.wraps
+        Category::ItemWrap => &mut loadout.wraps,
     };
-    
+
     let slot = to_slot.items.get_mut(data.slotIndex as usize).unwrap();
     *slot = data.itemToSlot;
-    
+
     update_profile(profile)?;
-    
+
     // my lazy ass
     let profile = get_profile(&id)?;
     let loadout = profile.loadouts.get(&data.lockerItem).unwrap();
-    
+
     let attr_changed = AttrChanged {
         changeType: String::from("itemAttrChanged"),
         itemId: data.lockerItem,
         attributeName: String::from("locker_slots_data"),
-        attributeValue: Attributes::LockerSlots(
-            LockerSlots {
-                slots: Slots {
-                    SkyDiveContrail: items!(loadout.contrail.clone()),
-                    MusicPack: items!(loadout.music.clone()),
-                    Character: items!(loadout.outfit.clone()),
-                    Backpack: items!(loadout.backpack.clone()),
-                    Glider: items!(loadout.glider.clone()),
-                    Pickaxe: items!(loadout.pickaxe.clone()),
-                    ItemWrap: items!(loadout.wraps.clone()),
-                    LoadingScreen: items!(loadout.loading.clone()),
-                    Dance: items!(loadout.dances.clone())
-                }
-            }
-        )
+        attributeValue: Attributes::LockerSlots(LockerSlots {
+            slots: Slots {
+                SkyDiveContrail: items!(loadout.contrail.clone()),
+                MusicPack: items!(loadout.music.clone()),
+                Character: items!(loadout.outfit.clone()),
+                Backpack: items!(loadout.backpack.clone()),
+                Glider: items!(loadout.glider.clone()),
+                Pickaxe: items!(loadout.pickaxe.clone()),
+                ItemWrap: items!(loadout.wraps.clone()),
+                LoadingScreen: items!(loadout.loading.clone()),
+                Dance: items!(loadout.dances.clone()),
+            },
+        }),
     };
-    
-    Ok(
-        HttpResponse::Ok()
-        .json(
-            create(
-                String::from("athena"),
-                vec![ProfileChanges::Changed(
-                    attr_changed
-                )],
-                Some(query.rvn)
-            )
-        )
-    )
+
+    Ok(HttpResponse::Ok().json(create(
+        String::from("athena"),
+        vec![ProfileChanges::Changed(attr_changed)],
+        Some(query.rvn),
+    )))
 }
 
 #[derive(Deserialize)]
 pub struct SetItemFavoriteStatusBatch {
     pub itemFavStatus: Vec<bool>,
-    pub itemIds: Vec<String>
+    pub itemIds: Vec<String>,
 }
 
 #[post("/fortnite/api/game/v2/profile/{id}/client/SetItemFavoriteStatusBatch")]
 pub async fn set_item_favorite_status_batch(
     web::Path(id): web::Path<String>,
     data: web::Json<SetItemFavoriteStatusBatch>,
-    query: web::Query<Query>
+    query: web::Query<Query>,
 ) -> std::io::Result<impl Responder> {
     let data = data.into_inner();
     let mut profile = get_profile(&id)?;
-    
+
     if data.itemFavStatus.len() != data.itemIds.len() {
-        return Ok(HttpResponse::BadRequest().into())
+        return Ok(HttpResponse::BadRequest().into());
     }
-    
+
     let mut changes: Vec<AttrChanged> = Vec::new();
-    
+
     for idx in 0..data.itemFavStatus.len() {
         let (status, id) = (
             *data.itemFavStatus.get(idx).unwrap(),
-            data.itemIds.get(idx).unwrap().clone()
+            data.itemIds.get(idx).unwrap().clone(),
         );
-        
+
         if status == true {
             profile.favourites.push(id.clone());
         } else {
-            profile.favourites = profile.favourites
-            .into_iter()
-            .filter(|i| **i != id)
-            .collect()
+            profile.favourites = profile
+                .favourites
+                .into_iter()
+                .filter(|i| **i != id)
+                .collect()
         }
-        
+
         changes.push(AttrChanged {
             changeType: String::from("itemAttrChanged"),
             itemId: id,
             attributeName: String::from("favorite"),
-            attributeValue: Attributes::Bool(status)
+            attributeValue: Attributes::Bool(status),
         });
     }
-    
+
     update_profile(profile)?;
-    
-    Ok(
-        HttpResponse::Ok()
-        .json(
-            create(
-                String::from("athena"),
-                changes
-                .into_iter()
-                .map(|i| ProfileChanges::Changed(i))
-                .collect(),
-                Some(query.rvn)
-            )
-        )
-    )
+
+    Ok(HttpResponse::Ok().json(create(
+        String::from("athena"),
+        changes
+            .into_iter()
+            .map(|i| ProfileChanges::Changed(i))
+            .collect(),
+        Some(query.rvn),
+    )))
 }
 
 #[post("/fortnite/api/game/v2/profile/{id}/client/{action}")]
 pub async fn other(
     web::Path((_, _)): web::Path<((), ())>,
-    query: web::Query<Query>
+    query: web::Query<Query>,
 ) -> impl Responder {
     let query = query.into_inner();
-    HttpResponse::Ok()
-    .json(
-        create(query.profileId, Vec::new(), Some(query.rvn))
-    )
+    HttpResponse::Ok().json(create(query.profileId, Vec::new(), Some(query.rvn)))
 }

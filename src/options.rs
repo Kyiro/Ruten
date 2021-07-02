@@ -13,7 +13,7 @@ pub enum AuthType {
     // Just the username
     Username,
     // Both Username & Password
-    Password
+    Password,
 }
 
 // if you've used c++ and header files
