@@ -274,10 +274,8 @@ impl FullProfile {
                     templateId: template_id.clone(),
                     attributes: CosmeticAttributes {
                         creation_time: if item.new == true {
-                            now.clone()
-                        } else {
-                            String::from("min")
-                        },
+                            Some(now.clone())
+                        } else { None },
                         max_level_bonus: 0,
                         level: 1,
                         item_seen: true,
@@ -373,7 +371,8 @@ pub struct CosmeticItem {
 
 #[derive(Serialize, Deserialize)]
 pub struct CosmeticAttributes {
-    pub creation_time: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub creation_time: Option<String>,
     pub max_level_bonus: i32,
     pub level: i32,
     pub item_seen: bool,
@@ -440,5 +439,5 @@ pub struct SlotVariants {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SlotVariant {
     pub channel: String,
-    pub active: String,
+    pub active: String
 }
