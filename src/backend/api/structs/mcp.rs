@@ -275,7 +275,9 @@ impl FullProfile {
                     attributes: CosmeticAttributes {
                         creation_time: if item.new == true {
                             Some(now.clone())
-                        } else { None },
+                        } else {
+                            None
+                        },
                         max_level_bonus: 0,
                         level: 1,
                         item_seen: true,
@@ -439,5 +441,5 @@ pub struct SlotVariants {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SlotVariant {
     pub channel: String,
-    pub active: String
+    pub active: String,
 }

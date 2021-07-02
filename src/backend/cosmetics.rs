@@ -24,6 +24,18 @@ pub struct Item {
     id: String,
     #[serde(rename = "type")]
     item_type: Value,
+    variants: Option<Vec<Variant>>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Variant {
+    channel: String,
+    options: Vec<VariantOption>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct VariantOption {
+    tag: String,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -41,6 +53,13 @@ pub struct CItem {
     #[serde(rename = "type")]
     pub item_type: String,
     pub new: bool,
+    pub variants: Vec<CVariant>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct CVariant {
+    pub channel: String,
+    pub options: Vec<String>,
 }
 
 // to-do add reading from a file in case fn-api is down
@@ -51,6 +70,8 @@ pub async fn get() -> Result<Vec<CItem>, reqwest::Error> {
         .json::<NewCosmetics>()
         .await?;
 
+    let new: Vec<String> = new.data.items.into_iter().map(|i| i.id).collect();
+
     let cosmetics = reqwest::get("https://fortnite-api.com/v2/cosmetics/br")
         .await?
         .json::<Cosmetics>()
@@ -58,13 +79,21 @@ pub async fn get() -> Result<Vec<CItem>, reqwest::Error> {
 
     let cosmetic_items: Vec<CItem> = cosmetics
         .data
-        .iter()
+        .into_iter()
         .map(|i| CItem {
             id: i.id.clone(),
-            item_type: i.item_type.backend_value.clone(),
-            new: match new.data.items.iter().find(|item| item.id == i.id) {
-                Some(_) => true,
-                None => false,
+            item_type: i.item_type.backend_value,
+            new: new.contains(&i.id),
+            variants: if let Some(variants) = i.variants {
+                variants
+                    .into_iter()
+                    .map(|v| CVariant {
+                        channel: v.channel,
+                        options: v.options.into_iter().map(|o| o.tag).collect(),
+                    })
+                    .collect()
+            } else {
+                Vec::new()
             },
         })
         .collect();
