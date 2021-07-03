@@ -12,81 +12,61 @@ use std::fs::{create_dir_all, read_dir, read_to_string};
 use std::path::Path;
 
 #[get("/fortnite/api/cloudstorage/system")]
-pub async fn system() -> impl Responder {
+pub async fn system() -> std::io::Result<impl Responder> {
     let mut data = Vec::<SystemEntry>::new();
-
-    if CUSTOM_CLOUDSTORAGE == false {
-        for (name, content) in CLOUDSTORAGE.iter() {
-            let content = content.decrypt();
-
-            let mut sha1 = Sha1::new();
-            let mut sha256 = Sha256::new();
-            sha1.update(&content);
-            sha256.update(&content);
-            let sha1 = sha1.finalize();
-            let sha256 = sha256.finalize();
-
-            let content = String::from_utf8(content).unwrap();
-
-            data.push(SystemEntry {
-                unique_filename: name.to_string(),
-                filename: name.to_string(),
-                hash: format!("{:x}", sha1),
-                hash256: format!("{:x}", sha256),
-                length: content.len(),
-                content_type: String::from("application/octet-stream"),
-                uploaded: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
-                storage_type: String::from("S3"),
-                do_not_cache: true,
-            })
-        }
-    } else {
+    let cloudstorage: Vec<(_, _)> = if CUSTOM_CLOUDSTORAGE == true {
         let dir = [&user_path(), "cloudstorage"].join("\\");
 
         if !Path::new(&dir).is_dir() {
             create_dir_all(dir).unwrap();
-            return HttpResponse::Ok().json(data);
+            return Ok(HttpResponse::Ok().json(data));
         }
+        
+        read_dir(dir)?
+        .into_iter()
+        .map(|f| {
+            let file = f.unwrap();
+            
+            (
+                file.file_name().into_string().unwrap(),
+                read_to_string(file.path()).unwrap()
+            )
+        })
+        .collect()
+    } else {
+        CLOUDSTORAGE
+        .iter()
+        .map(|(n, c)| (n.to_string(), c.decrypt_str().unwrap()))
+        .collect()
+    };
 
-        for file in read_dir(dir).unwrap() {
-            let file = file.unwrap();
-            let file_name = file.file_name().into_string().unwrap();
-            let file_data = read_to_string(file.path()).unwrap();
+    for (name, content) in cloudstorage.into_iter() {
+        // spaghetti :flushed:
+        let content = String::into_bytes(content);
+        
+        let mut sha1 = Sha1::new();
+        let mut sha256 = Sha256::new();
+        sha1.update(&content);
+        sha256.update(&content);
+        let sha1 = sha1.finalize();
+        let sha256 = sha256.finalize();
 
-            let mut sha1 = Sha1::new();
-            let mut sha256 = Sha256::new();
+        let content = String::from_utf8(content).unwrap();
 
-            sha1.update(file_data.as_bytes());
-            sha256.update(file_data.as_bytes());
-
-            let sha1 = sha1.finalize();
-            let sha256 = sha256.finalize();
-
-            data.push(SystemEntry {
-                unique_filename: file_name.clone(),
-                filename: file_name,
-                hash: format!("{:x}", sha1),
-                hash256: format!("{:x}", sha256),
-                length: file_data.len(),
-                content_type: String::from("application/octet-stream"),
-                // spaghetti pretty much
-                uploaded: match file.metadata() {
-                    Ok(data) => match data.modified() {
-                        Ok(time) => {
-                            let time: DateTime<Utc> = time.into();
-                            time.to_rfc3339_opts(SecondsFormat::Secs, true)
-                        }
-                        Err(_) => Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
-                    },
-                    Err(_) => Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
-                },
-                storage_type: String::from("S3"),
-                do_not_cache: false,
-            })
-        }
+        data.push(SystemEntry {
+            unique_filename: name.to_string(),
+            filename: name.to_string(),
+            hash: format!("{:x}", sha1),
+            hash256: format!("{:x}", sha256),
+            length: content.len(),
+            content_type: String::from("application/octet-stream"),
+            uploaded: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
+            storage_type: String::from("S3"),
+            do_not_cache: true,
+        })
     }
 
-    HttpResponse::Ok().json(data)
+    Ok(HttpResponse::Ok().json(data))
 }
 
 #[get("/fortnite/api/cloudstorage/system/config")]

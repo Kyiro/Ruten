@@ -120,9 +120,13 @@ pub async fn set_cosmetic_locker_slot(
     *slot = data.itemToSlot;
     
     let v_slot = to_slot.variants.get_mut(data.slotIndex as usize).unwrap();
-    *v_slot = Some(SlotVariants {
-        variants: data.variantUpdates
-    });
+    if data.variantUpdates.len() == 0 {
+        *v_slot = None;
+    } else {
+        *v_slot = Some(SlotVariants {
+            variants: data.variantUpdates
+        });
+    }
 
     update_profile(profile)?;
 
