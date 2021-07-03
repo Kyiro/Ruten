@@ -159,6 +159,7 @@ pub struct FullProfile {
 }
 
 impl FullProfile {
+    // TO-DO: Arc<Vec<_>> -> Vec<_> and get rid of some cloning
     pub fn new(cosmetics: Arc<Vec<CItem>>, profile: RProfile) -> Self {
         let id = profile.id;
         let mut full_profile = FullProfile {
@@ -265,7 +266,7 @@ impl FullProfile {
         }
 
         let now = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
-
+        
         for item in cosmetics.iter() {
             let template_id = [item.item_type.clone(), item.id.clone()].join(":");
             full_profile.profile.items.insert(
@@ -283,7 +284,11 @@ impl FullProfile {
                         item_seen: true,
                         rnd_sel_cnt: 0,
                         xp: 0,
-                        variants: Vec::new(),
+                        variants: item.variants.iter().map(|v| Variant {
+                            channel: v.channel.clone(),
+                            active: v.options.get(0).unwrap().clone(),
+                            owned: v.options.clone()
+                        }).collect(),
                         favorite: profile.favourites.contains(&template_id),
                     },
                     quantity: 1,

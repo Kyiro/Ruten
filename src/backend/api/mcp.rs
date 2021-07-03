@@ -5,22 +5,16 @@ use crate::util::user_path;
 use actix_web::{post, web, HttpResponse, Responder};
 use chrono::prelude::*;
 use serde::Deserialize;
-use serde_json::Value;
 use std::fs::{create_dir_all, read_to_string, write};
 use std::path::Path;
 
 fn create(profile_id: String, change: Vec<ProfileChanges>, rvn: Option<i32>) -> Profile {
-    let revision = match rvn {
-        Some(i) => i + 1,
-        None => 1,
-    };
-
     Profile {
-        profileRevision: revision,
+        profileRevision: rvn.unwrap_or(0) + 1,
         profileId: profile_id,
         profileChangesBaseRevision: rvn.unwrap_or(1),
         profileChanges: change,
-        profileCommandRevision: revision,
+        profileCommandRevision: rvn.unwrap_or(0) + 1,
         serverTime: Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true),
         responseVersion: 1,
     }
@@ -97,7 +91,7 @@ pub struct SetCosmeticLockerSlot {
     pub category: Category,
     pub itemToSlot: String,
     pub slotIndex: i32,
-    pub variantUpdates: Vec<Value>,
+    pub variantUpdates: Vec<SlotVariant>,
 }
 
 #[post("/fortnite/api/game/v2/profile/{id}/client/SetCosmeticLockerSlot")]
@@ -124,6 +118,11 @@ pub async fn set_cosmetic_locker_slot(
 
     let slot = to_slot.items.get_mut(data.slotIndex as usize).unwrap();
     *slot = data.itemToSlot;
+    
+    let v_slot = to_slot.variants.get_mut(data.slotIndex as usize).unwrap();
+    *v_slot = Some(SlotVariants {
+        variants: data.variantUpdates
+    });
 
     update_profile(profile)?;
 
